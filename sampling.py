@@ -14,7 +14,7 @@ def save_gif(images: torch.Tensor, path: str):
 
 
 @torch.no_grad()
-def get_latent_direction(model, data_loader, binary_features, attr):
+def get_latent_direction(model, data_loader, attr_list):
     """
     Obtain direction from {no attr} to {attr} in latent space
     """
@@ -25,7 +25,7 @@ def get_latent_direction(model, data_loader, binary_features, attr):
     n_from, n_to = 0, 0
     for i, img in enumerate(data_loader):
         img = img.to(model.device)
-        if binary_features[i][attr] == 0:
+        if attr_list[i] == -1:
             cum_mean_from = (model.forward(img)[2] + n_from*cum_mean_from) / (n_from + 1)
             n_from += 1
         else:  # binary_features[i][attr] == 1
@@ -85,6 +85,3 @@ def sample_linear_interpolation(model, img1, img2, steps, filename=None, save_pa
             save_gif(samples, save_path + filename + '.gif')
         else:
             TVutils.save_image(samples, save_path + filename +'.png', normalize=True, nrow=steps)
-    
-
-        

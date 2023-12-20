@@ -1,2 +1,4 @@
 datasets
 sample
+checkpoints
+**/*.rar
