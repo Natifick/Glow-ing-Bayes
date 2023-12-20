@@ -1,5 +1,6 @@
 import torch
 import torch.nn
+import numpy as np
 
 import torchvision.utils as TVutils
 
@@ -14,39 +15,50 @@ def save_gif(images: torch.Tensor, path: str):
 
 
 @torch.no_grad()
-def get_latent_direction(model, data_loader, attr_list):
+def get_latent_direction(model, dataset, attr_list):
     """
     Obtain direction from {no attr} to {attr} in latent space
     """
     model.eval()
-    cum_mean_from = torch.zeros(1, model.latent_dim)
-    cum_mean_to = torch.zeros(1, model.latent_dim)
+    cum_mean_from = [0]*4
+    cum_mean_to = [0]*4
 
     n_from, n_to = 0, 0
-    for i, img in enumerate(data_loader):
-        img = img.to(model.device)
-        if attr_list[i] == -1:
-            cum_mean_from = (model.forward(img)[2] + n_from*cum_mean_from) / (n_from + 1)
-            n_from += 1
-        else:  # binary_features[i][attr] == 1
-            cum_mean_to += (model.forward(img)[2] + n_to*cum_mean_to) / (n_to + 1)
-            n_to += 1
 
-    return cum_mean_to - cum_mean_from
+    neg_indices = np.where(np.array(attr_list) == -1)[0][:100]
+    pos_indices = np.where(np.array(attr_list) == 1)[0][:100]
+
+    for i in neg_indices:
+        img = dataset[i].cuda()[None,:]
+        z = model.forward(img)[2]
+        for idx in range(len(z)):
+            cum_mean_from[idx] += z[idx]
+        n_from += 1
+    
+    for i in pos_indices:
+        img = dataset[i].cuda()[None,:]
+        z = model.forward(img)[2]
+        for idx in range(len(z)):
+            cum_mean_to[idx] += z[idx]
+        n_to += 1
+    
+    return [c_to/n_to - c_from/n_from for c_from, c_to in zip(cum_mean_from, cum_mean_to)]
 
 
 @torch.no_grad()
 def sample_direction(model, img, direction, steps, step_size, filename=None, save_path='./sample_directions/', render_gif=False):
     """Sample in direction in latent space."""
     model.eval()
+   
     # obtain latent
-    img = img.to(model.device)
     z = model.forward(img)[2]
 
     # sample in direction
     samples = []
     for n in range(1, steps + 1):
-        z_shifted = z + n*step_size*direction
+        z_shifted = []
+        for i in range(len(z)):
+            z_shifted.append(z[i] + n*step_size*direction[i])
         img_shifted = model.reverse(z_shifted)
         samples.append(img_shifted.cpu().detach())
     samples = torch.cat(samples, dim=0)
@@ -60,27 +72,26 @@ def sample_direction(model, img, direction, steps, step_size, filename=None, sav
 
 
 @torch.no_grad()
-def sample_linear_interpolation(model, img1, img2, steps, filename=None, save_path='./sample_intepolations', render_gif=False):
+def sample_linear_interpolation(model, img1, img2, steps, filename=None, save_path='./sample_intepolations/', render_gif=False):
     """Linear interpolation between two images in latent space."""
     model.eval()
 
     #obtain latents
-    img1 = img1.to(model.device)
-    img2 = img2.to(model.device)
-
     z1 = model.forward(img1)[2]
     z2 = model.forward(img2)[2]
 
     #interpolate
     samples = []
     for n in range(1, steps + 1):
-        z = z1 + n*(z2 - z1)/steps
-        img = model.reverse(z)
+        z_new = []
+        for i in range(len(z1)):
+            z_new.append(z1[i] + n*(z2[i] - z1[i])/steps)
+        img = model.reverse(z_new)
         samples.append(img.cpu().detach())
     samples = torch.cat(samples, dim=0)
 
     if filename is not None:
-        os.makedirs('./sample_interpolation', exist_ok=True)
+        os.makedirs('./sample_intepolations', exist_ok=True)
         if render_gif:
             save_gif(samples, save_path + filename + '.gif')
         else:

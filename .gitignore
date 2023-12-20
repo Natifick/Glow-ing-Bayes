@@ -2,3 +2,4 @@ datasets
 sample
 checkpoints
 **/*.rar
+__pycache__
