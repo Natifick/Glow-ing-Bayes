@@ -15,7 +15,7 @@ def save_gif(images: torch.Tensor, path: str):
 
 
 @torch.no_grad()
-def get_latent_direction(model, dataset, attr_list):
+def get_latent_direction(model, dataset, attr_list, n_samples=300):
     """
     Obtain direction from {no attr} to {attr} in latent space
     """
@@ -25,24 +25,24 @@ def get_latent_direction(model, dataset, attr_list):
 
     n_from, n_to = 0, 0
 
-    neg_indices = np.where(np.array(attr_list) == -1)[0][:100]
-    pos_indices = np.where(np.array(attr_list) == 1)[0][:100]
+    neg_indices = np.random.choice(np.where(np.array(attr_list) == -1)[0], n_samples, replace=False)
+    pos_indices = np.random.choice(np.where(np.array(attr_list) == 1)[0], n_samples, replace=False)
 
     for i in neg_indices:
         img = dataset[i].cuda()[None,:]
         z = model.forward(img)[2]
         for idx in range(len(z)):
-            cum_mean_from[idx] += z[idx]
+            cum_mean_from[idx] = (z[idx] + cum_mean_from[idx]*n_from)/(n_from + 1)
         n_from += 1
     
     for i in pos_indices:
         img = dataset[i].cuda()[None,:]
         z = model.forward(img)[2]
         for idx in range(len(z)):
-            cum_mean_to[idx] += z[idx]
+            cum_mean_to[idx] = (z[idx] + cum_mean_to[idx]*n_to)/(n_to + 1)
         n_to += 1
     
-    return [c_to/n_to - c_from/n_from for c_from, c_to in zip(cum_mean_from, cum_mean_to)]
+    return [(c_to - c_from)/torch.norm(c_to - c_from) for c_from, c_to in zip(cum_mean_from, cum_mean_to)]
 
 
 @torch.no_grad()
