@@ -33,10 +33,13 @@ def get_latent_direction(model, data_loader, binary_features, attr):
 
 
 @torch.no_grad()
-def get_linear_interpolation(model, img, direction, steps, step_size, filename=None, save_path='./sample_interpolation'):
+def sample_direction(model, img, direction, steps, step_size, filename=None, save_path='./sample_directions'):
     model.eval()
+    # obtain latent
     img = img.to(model.device)
     z = model.forward(img)[2]
+
+    # sample in direction
     samples = []
     for n in range(1, steps + 1):
         z_shifted = z + n*step_size*direction
@@ -49,4 +52,31 @@ def get_linear_interpolation(model, img, direction, steps, step_size, filename=N
         TVutils.save_image(samples, save_path + '.png', normalize=True, nrow=steps)
 
     return samples
+
+
+@torch.no_grad()
+def sample_linear_interpolation(model, img1, img2, steps, filename=None, save_path='./sample_intepolations'):
+    model.eval()
+
+    #obtain latents
+    img1 = img1.to(model.device)
+    img2 = img2.to(model.device)
+
+    z1 = model.forward(img1)[2]
+    z2 = model.forward(img2)[2]
+
+    #interpolate
+    samples = []
+    for n in range(1, steps + 1):
+        z = z1 + n*(z2 - z1)/steps
+        img = model.reverse(z)
+        samples.append(img.cpu().detach())
+    samples = torch.cat(samples, dim=0)
+
+    if filename is not None:
+        torch.save(samples, save_path + '.pt')
+        TVutils.save_image(samples, save_path + '.png', normalize=True, nrow=steps)
+    
+    return samples
+
         
