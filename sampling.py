@@ -3,18 +3,17 @@ import torch.nn
 
 import torchvision.utils as TVutils
 
-"""
-Code responsible for sampling from trained model based of direction in latent space.
-Directions are obtained following way:
-- select binary attribute of interest a
-- divide dataset into two subsets: a=0 and a=1
-- compute mean of latent space representation for each subset
-- obtain direction as a difference between means
-- linearly intepolate from one image two another
-"""
-
 @torch.no_grad()
 def get_latent_direction(model, data_loader, binary_features, attr):
+    """
+    Sampling from trained model based of direction in latent space.
+    Direction is obtained following way:
+    - select binary attribute of interest a
+    - divide dataset into two subsets: a=0 and a=1
+    - compute mean of latent space representation for each subset
+    - obtain direction as a difference between means
+    - linearly intepolate from one image two another
+    """
     model.eval()
     cum_mean_from = torch.zeros(1, model.latent_dim)
     cum_mean_to = torch.zeros(1, model.latent_dim)
