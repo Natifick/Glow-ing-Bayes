@@ -1,0 +1,1 @@
+{"affine": true, "batch_size": 256, "epochs": 10, "img_size": 64, "layers_mask": [0, 1, 1], "lr": 0.0001, "n_bits": 5, "n_block": 4, "n_flow": 4, "n_sample": 20, "no_lu": false, "temp": 0.7}
