@@ -1,3 +1,6 @@
 datasets
 sample
 checkpoints/*.pth
+checkpoints
+**/*.rar
+__pycache__
